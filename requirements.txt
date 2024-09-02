@@ -1,0 +1,6 @@
+rich
+tqdm
+safetensors
+torch
+tabulate
+numpy<2
