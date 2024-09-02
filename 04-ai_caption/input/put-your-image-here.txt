@@ -1,0 +1,1 @@
+Put in this folder all the image you wish to have caption by GPT4o or GPT4o Mini.

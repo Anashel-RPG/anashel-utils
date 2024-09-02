@@ -1,0 +1,1 @@
+Put in this folder all the image you wish to generate style from.
