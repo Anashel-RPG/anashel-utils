@@ -5,6 +5,7 @@
 This tool allows you to merge two LoRA models using adaptive merging strategies. You can choose between a single weighted merge or a mix of three different weight ratios. This utility will guide you step-by-step through the process of selecting and merging your LoRA models.
 
 ![Anashel's LoRA Merging Utility](readme_images/spider.jpg)
+YouTube on My Merged LoRAs: https://www.youtube.com/watch?v=VUV6bzml2SU
 
 ## ✨ Features
 
@@ -125,4 +126,8 @@ Merging completed! ✅
 
 ## 🚀 Future Updates
 
-I plan to upload all the utilities I've coded to assist in my training of RPG v6, including image auto-captioning and style transfer to diversify and enrich datasets. In the meantime, feel free to join my Discord community for updates and discussions: [https://discord.gg/byecho](https://discord.gg/byecho).
+I plan to upload all the utilities I've coded to assist in my training of RPG v6, including image auto-captioning and style transfer to diversify and enrich datasets. In the meantime, feel free to join my Discord community for updates and discussions: [Join my Discord](https://discord.gg/byecho).
+
+You can also download my LoRA: [RPG v6 for Flux1 on CivitAI](https://civitai.com/models/647159/rpg-v6-flux-1).
+
+#### - 33 -  ####
