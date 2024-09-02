@@ -127,7 +127,7 @@ def completed(settings):
     """Prompt user to decide whether to merge another LoRA or finish."""
     while True:
         choice = input("Do you want to merge another LoRA? (yes to continue, no to finish): ").strip().lower()
-        if choice in ["yes", "y"]:
+        if choice in ["yes", "y", ""]:
             new_settings = option_5_merge_lora()
             if new_settings:
                 start(new_settings)  # Start merging the new settings

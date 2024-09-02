@@ -141,7 +141,7 @@ def option_1_generate_prompt_idea():
             "[bold yellow]Is this satisfactory?[/bold yellow] (no to adjust, yes to continue)"
         )
 
-        if adjust.lower() in ["yes", "y"]:
+        if adjust.lower() in ["yes", "y", ""]:
             break
 
     return settings
@@ -417,7 +417,7 @@ def option_5_merge_lora():
         )
 
         # If the user chooses to adjust, restart the selection process without reloading models
-        if confirm.lower() in ["yes", "y"]:
+        if confirm.lower() in ["yes", "y", ""]:
             break
         else:
             console.print("[bold yellow]Adjusting settings. Please make your selections again.[/bold yellow]")
