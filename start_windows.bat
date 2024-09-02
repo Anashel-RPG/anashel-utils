@@ -42,6 +42,7 @@ echo Running main.py...
 python main.py
 if %ERRORLEVEL% NEQ 0 (
     echo An error occurred while running main.py. Please check the script for errors.
+    pause
     exit /b 1
 )
 
