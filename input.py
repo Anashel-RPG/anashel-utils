@@ -377,22 +377,40 @@ def option_5_merge_lora():
 
         merge_lora_path = os.path.join(lora_folder, merge_lora_file)
 
+        # Prompt for merge strategy
+        console.print(
+            "[bold yellow]Choose the merging strategy:[/bold yellow]\n"
+            "[1] Adaptive Merge (uses tensor norms and weight)\n"
+            "[2] Manual Merge (uses fixed weights you specify)"
+        )
+        strategy_choice = Prompt.ask("[bold green]Choose a strategy (1-2)[/bold green]", choices=["1", "2"])
+        if strategy_choice == "1":
+            merge_type = "adaptive"
+            console.print("[bold cyan]Selected Adaptive Merge strategy.[/bold cyan]")
+        else:
+            merge_type = "manual"
+            console.print("[bold cyan]Selected Manual Merge strategy.[/bold cyan]")
+
         # Prompt for merge weight percentage
-        weight_input = Prompt.ask("Enter the percentage to keep from the main model (0-100)\nYou can also type 'mix' for 25%, 50%, 75% versions")
+        weight_input = Prompt.ask(
+            "Enter the percentage to keep from the main model (0-100)\nYou can also type 'mix' for 25%, 50%, 75% versions"
+        )
 
         if weight_input.lower() == 'mix':
             settings["merge_strategy"] = "Mix"
             settings["weight_percentages"] = [25, 50, 75]
-            console.print("[bold cyan]You've chosen to create three versions with weights: 25%, 50%, and 75%[/bold cyan]")
+            settings["merge_type"] = merge_type  # Apply the selected merge strategy to the mix
+            console.print(f"[bold cyan]You've chosen to create three versions with weights: 25%, 50%, and 75% using {merge_type} merge strategy.[/bold cyan]")
         else:
             try:
                 weight_percentage = float(weight_input)
                 if 0 <= weight_percentage <= 100:
                     settings["merge_strategy"] = "Weighted"
                     settings["weight_percentage"] = weight_percentage
+                    settings["merge_type"] = merge_type
                     alpha = weight_percentage / 100
                     beta = 1.0 - alpha
-                    console.print(f"[bold cyan]Merge Weight: {alpha * 100}% main, {beta * 100}% merge[/bold cyan]")
+                    console.print(f"[bold cyan]Merge Weight: {alpha * 100}% main, {beta * 100}% merge using {merge_type} merge strategy.[/bold cyan]")
                 else:
                     raise ValueError
             except ValueError:
@@ -404,12 +422,13 @@ def option_5_merge_lora():
             f"\n[bold cyan]You have chosen to merge:[/bold cyan]\n"
             f"Main LoRA: {main_lora_file.replace('.safetensors', '').replace('.pt', '')}\n"
             f"Merge LoRA: {merge_lora_file.replace('.safetensors', '').replace('.pt', '')}\n"
-            f"Merge Strategy: {settings['merge_strategy']}"
+            f"Merge Strategy: {settings['merge_strategy']}\n"
+            f"Merge Type: {settings['merge_type']}"
         )
         if settings["merge_strategy"] == "Mix":
-            console.print(f"Weight Percentages: 25%, 50%, 75%")
+            console.print(f"Weight Percentages: 25%, 50%, 75% using {settings['merge_type']} strategy")
         else:
-            console.print(f"Weight Percentage: {settings['weight_percentage']}%")
+            console.print(f"Weight Percentage: {settings['weight_percentage']}% using {settings['merge_type']} strategy")
 
         # Confirm settings before proceeding
         confirm = Prompt.ask(

@@ -1,7 +1,6 @@
 
 # 🎨 Anashel's LoRA Merging Utility
 
-
 This tool allows you to merge two LoRA models using adaptive merging strategies. You can choose between a single weighted merge or a mix of three different weight ratios. This utility will guide you step-by-step through the process of selecting and merging your LoRA models.
 
 ![Anashel's LoRA Merging Utility](readme_images/spider.jpg)
@@ -9,8 +8,9 @@ YouTube on My Merged LoRAs: https://www.youtube.com/watch?v=VUV6bzml2SU
 
 ## ✨ Features
 
-- **Adaptive Merging**: Merge two LoRA models with various strategies.
-- **Mix or Weighted Options**: Choose from single adaptive weighted merges or create mixed versions with adaptive merging for 25%, 50%, and 75% weights automatically.
+- **Adaptive Merging**: Merge two LoRA models with adaptive merge strategies.
+- **Manual Weight Merging**: Support for traditional weighted merging, allowing users to force specific weights.
+- **Mix or Weighted Options**: Choose from single weighted, or create mixed versions for 25%, 50%, and 75% weights automatically.
 - **User-Friendly Guidance**: Easy-to-follow prompts guide you through the setup.
 
 ## 📋 What is Adaptive Merging
@@ -24,6 +24,9 @@ I currently have over 20 concepts for RPGv6 and need to add around 50 more. I ai
 So, I trained a second LoRA focused on rendering styles of the same classes with specific emphasis on keywords. Instead of merging all of this in a single training session, I use adaptive merging to enhance the power of the style LoRA while balancing my concept LoRA. The improvements were significant enough to make this utility publicly available, hoping it might help others facing similar challenges.
 
 In the future, I might need to train an entire checkpoint, but for now, adaptive merging pushes the limits of my RPG v6 LoRA effectively.
+
+### Manual Weight Merging Also Available
+In adaptive merge, the weight value is used when adaptive merging identifies conflicting layers or important overlaps that need prioritization. Sometimes, you may want to force a weight and ignore adaptive merge recommendations. LoRA will behave differently, so having the traditional weight merge approach is valuable for experimentation.
 
 ## 📋 Prerequisites
 
@@ -74,7 +77,6 @@ start_windows.bat
 
 Once the utility is running, it will guide you through each step. Below is a sample console output to give you an idea of what to expect:
 
-
 ```
 Boot routine initiated...
 ┌──────────────────────────────── LoRA Merger ────────────────────────────────┐
@@ -115,6 +117,10 @@ Is this satisfactory? (no to adjust, yes to continue): yes
 
 Merging completed! ✅
 ```
+
+## 📖 Naming Convention
+
+Your new LoRA will start with `mrg_` to identify this was the result of a merge, then you will have the first and second LoRA names with a 3-letter tag in the middle. `A` stands for Adaptive, `M` stands for Manual, followed by the weight percentage. For example, `A25` means that this merge is the result of an Adaptive approach with a 25% weight, while `M75` is a manual imposed 75% merge for all layers in the LoRA.
 
 ## ⚠️ Troubleshooting
 

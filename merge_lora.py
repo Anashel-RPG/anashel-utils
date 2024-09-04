@@ -19,16 +19,17 @@ def start(settings):
     main_lora_model = load_file(main_lora_path)
     merge_lora_model = load_file(merge_lora_path)
 
-    # Perform the merge based on the strategy
+    # Choose the merging strategy based on the settings
     if settings['merge_strategy'] == 'Mix':
-        merged_models = merge_loras_mix(main_lora_model, merge_lora_model, settings['weight_percentages'])
+        merged_models = merge_loras_mix(main_lora_model, merge_lora_model, settings['weight_percentages'], settings['merge_type'])
     else:  # Weighted
-        merged_model = merge_loras_weighted(main_lora_model, merge_lora_model, settings['weight_percentage'] / 100)
+        merge_type = settings.get('merge_type', 'adaptive')
+        merged_model = merge_loras_weighted(main_lora_model, merge_lora_model, settings['weight_percentage'] / 100, merge_type)
         merged_models = [(settings['weight_percentage'] / 100, merged_model)]
 
     # Save the merged models
     for weight, merged_model in merged_models:
-        save_merged_lora(merged_model, lora_folder, settings['main_lora'], settings['merge_lora'], weight)
+        save_merged_lora(merged_model, lora_folder, settings['main_lora'], settings['merge_lora'], weight, settings['merge_type'])
 
     print("Merging completed! ✅")
     print(" ")
@@ -37,24 +38,27 @@ def start(settings):
     completed(settings)
 
 
-def merge_loras_mix(main_lora_model, merge_lora_model, weight_percentages):
+def merge_loras_mix(main_lora_model, merge_lora_model, weight_percentages, merge_type):
     """Merges two LoRA models using multiple weight percentages."""
     merged_models = []
     for weight in weight_percentages:
-        merged_model = merge_loras_weighted(main_lora_model, merge_lora_model, weight / 100)
+        merged_model = merge_loras_weighted(main_lora_model, merge_lora_model, weight / 100, merge_type)
         merged_models.append((weight / 100, merged_model))
     return merged_models
 
 
-def merge_loras_weighted(main_lora_model, merge_lora_model, main_weight):
-    """Merges two LoRA models using adaptive merge with a specified main weight."""
+def merge_loras_weighted(main_lora_model, merge_lora_model, main_weight, merge_type='adaptive'):
+    """Merges two LoRA models using adaptive or manual merge with a specified main weight."""
     merged_model = {}
     all_keys = set(main_lora_model.keys()).union(set(merge_lora_model.keys()))
 
     with tqdm(total=len(all_keys), desc="Merging LoRA models", unit="layer") as pbar:
         for key in all_keys:
             if key in main_lora_model and key in merge_lora_model:
-                merged_model[key] = adaptive_merge(main_lora_model[key], merge_lora_model[key], main_weight)
+                if merge_type == 'adaptive':
+                    merged_model[key] = adaptive_merge(main_lora_model[key], merge_lora_model[key], main_weight)
+                else:
+                    merged_model[key] = manual_merge(main_lora_model[key], merge_lora_model[key], main_weight)
             elif key in main_lora_model:
                 merged_model[key] = main_lora_model[key]
             else:
@@ -65,40 +69,28 @@ def merge_loras_weighted(main_lora_model, merge_lora_model, main_weight):
 
 
 def adaptive_merge(tensor1, tensor2, main_weight):
-    """
-    Merges two tensors using adaptive weights based on their L2 norms,
-    influenced by your suggested main_weight.
-    This approach differs from normal merging because it dynamically adjusts
-    the contribution of each tensor based on their relative magnitudes (L2 norms),
-    rather than using fixed or arbitrary weights.
-    """
-    # Check if the tensors are of the same size, and if not, pad them to match.
-    # Normal merges would typically fail or skip if sizes differ.
+    """Merges two tensors using adaptive weights based on their L2 norms."""
     if tensor1.size() != tensor2.size():
-        tensor1, tensor2 = pad_tensors(tensor1, tensor2)  # Handles mismatched sizes gracefully.
+        tensor1, tensor2 = pad_tensors(tensor1, tensor2)
 
-    # Calculate the L2 norm (magnitude) of each tensor.
-    # L2 norms give a sense of the overall "size" of each single tensor, capturing their significance.
     norm1 = torch.norm(tensor1)
     norm2 = torch.norm(tensor2)
 
-    # Compute adaptive weights based on the relative norms of the tensors.
-    # These weights automatically adjust based on tensor magnitude, making larger tensors contribute more.
     adaptive_weight1 = norm1 / (norm1 + norm2)
     adaptive_weight2 = norm2 / (norm1 + norm2)
 
-    # Adjust the adaptive weights using your input main_weight.
-    # This step allows you to influence the merging process while preserving the adaptive nature.
-    # It blends the calculated adaptive weights with a user preference, making it dynamic and controllable.
-    # Normal merges typically apply a fixed user weight directly, ignoring the natural balance of the tensors.
     final_weight1 = adaptive_weight1 * main_weight + (1 - adaptive_weight2) * (1 - main_weight)
-    final_weight2 = 1 - final_weight1  # Ensures that weights sum to 1, maintaining balance.
+    final_weight2 = 1 - final_weight1
 
-    # Merge the tensors using the adjusted final weights.
-    # In a normal merge, this would simply be something like `main_weight * tensor1 + (1 - main_weight) * tensor2`,
-    # ignoring the adaptive adjustments and purely relying on user-defined static weights.
     return final_weight1 * tensor1 + final_weight2 * tensor2
 
+
+def manual_merge(tensor1, tensor2, main_weight):
+    """Merges two tensors using fixed weights based on user input."""
+    if tensor1.size() != tensor2.size():
+        tensor1, tensor2 = pad_tensors(tensor1, tensor2)
+
+    return main_weight * tensor1 + (1 - main_weight) * tensor2
 
 
 def pad_tensors(tensor1, tensor2):
@@ -111,12 +103,12 @@ def pad_tensors(tensor1, tensor2):
     return padded1, padded2
 
 
-def save_merged_lora(merged_model, lora_folder, main_lora_file, merge_lora_file, weight):
+def save_merged_lora(merged_model, lora_folder, main_lora_file, merge_lora_file, weight, merge_type):
     """Saves the merged LoRA model with an appropriate name."""
     main_name = os.path.splitext(main_lora_file)[0]
     merge_name = os.path.splitext(merge_lora_file)[0]
-    weight_str = f"{int(weight * 100):03d}"
-    merged_lora_name = f"merge_{main_name}_{weight_str}p_{merge_name}.safetensors"
+    strategy_code = f"A{int(weight * 100)}" if merge_type == 'adaptive' else f"M{int(weight * 100)}"
+    merged_lora_name = f"mrg_{main_name}_{strategy_code}_{merge_name}.safetensors"
     merged_lora_path = os.path.join(lora_folder, merged_lora_name)
 
     save_file(merged_model, merged_lora_path)
@@ -130,12 +122,12 @@ def completed(settings):
         if choice in ["yes", "y", ""]:
             new_settings = option_5_merge_lora()
             if new_settings:
-                start(new_settings)  # Start merging the new settings
+                start(new_settings)
             else:
                 print("No new settings provided. Exiting merge process.")
-                sys.exit(0)  # Exit the application completely
+                sys.exit(0)
         elif choice in ["no", "n"]:
             print("Merging process completed.")
-            sys.exit(0)  # Exit the application completely
+            sys.exit(0)
         else:
             print("Invalid choice. Please enter 'yes' or 'no'.")
