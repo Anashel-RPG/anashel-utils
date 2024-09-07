@@ -17,19 +17,25 @@ def main_input():
     # Display the welcome message in a box
     console.print(Panel(
         "Welcome to the Anashel's LoRA Merging Utility!\n\n"
-        "This tool allows you to merge two LoRA models using adaptive merging strategies."
-        "You can choose between a single weighted merge or a mix of three different weight ratios."
-        "The process will guide you through selecting your LoRA models and merge settings.",
+        "This tool allows you to merge LoRA models or merge a LoRA into a main checkpoint."
+        "The process will guide you through selecting your models and merge settings.",
         title="[bold yellow]LoRA Merger[/bold yellow]",
         expand=False
     ))
 
-    # Pause or hit enter to continue
-    console.print("[bold cyan]Press Enter to continue...[/bold cyan]")
-    input()
+    # Ask the user which type of merge they want to perform
+    console.print(
+        "\n[bold yellow]Would you like to merge:[/bold yellow]\n"
+        "[1] Two LoRA models\n"
+        "[2] A LoRA model into a main checkpoint"
+    )
+    choice = Prompt.ask("[bold green]Choose an option (1-2)[/bold green]", choices=["1", "2"])
 
-    # Directly call the LoRA merging function
-    settings = option_5_merge_lora()
+    # Call the respective merge function based on the user's choice
+    if choice == "1":
+        settings = option_5_merge_lora()  # For merging two LoRA models
+    else:
+        settings = option_6_merge_lora_checkpoint()  # For merging a LoRA model into a checkpoint
 
     # Check if settings are valid before confirming
     if settings:
@@ -304,19 +310,19 @@ def option_5_merge_lora():
     settings = {"utility": "Merge LoRA"}
 
     # Step 1: Scan the folder and make an inventory of all LoRA (.safetensor) files
-    lora_folder = "05-lora_merging"
+    lora_folder = "05a-lora_merging"
     lora_files = [f for f in os.listdir(lora_folder) if f.endswith('.safetensors') or f.endswith('.pt')]
 
     if not lora_files:
         console.print(
-            "[bold red]Error: No LoRA files found in 05-lora_merging.[/bold red]\n"
+            "[bold red]Error: No LoRA files found in 05a-lora_merging.[/bold red]\n"
             "Please ensure that .safetensors files are present before proceeding."
         )
         return None
 
     if len(lora_files) == 1:
         console.print(
-            "[bold red]Error: Only one LoRA file found in 05-lora_merging.[/bold red]\n"
+            "[bold red]Error: Only one LoRA file found in 05a-lora_merging.[/bold red]\n"
             "A minimum of two LoRA files is required to perform a merge. Please add more files to proceed."
         )
         return None
@@ -458,6 +464,136 @@ def option_5_merge_lora():
 
     settings["main_lora"] = main_lora_file
     settings["merge_lora"] = merge_lora_file
+
+    return settings
+
+def option_6_merge_lora_checkpoint():
+    """Handle input for merging a LoRA model into a main checkpoint."""
+    console.print("----\n")  # Visual separator for entering the new section
+    console.print(
+        "[bold green]This utility allows you to merge a LoRA model into a main checkpoint by selecting the models and adjusting the merge weight percentage.[/bold green]\n\n!!! WARNING: I can’t even begin to explain how seriously messed up and experimental this is.\n"
+    )
+    settings = {"utility": "Merge LoRA Checkpoint"}
+
+    # Step 1: Scan the folder for LoRA models
+    lora_folder = "05a-lora_merging"
+    checkpoint_folder = "05b-checkpoint/input"  # Updated folder for input checkpoints
+    lora_files = [f for f in os.listdir(lora_folder) if f.endswith('.safetensors') or f.endswith('.pt')]
+    checkpoint_files = [f for f in os.listdir(checkpoint_folder) if f.endswith('.safetensors') or f.endswith('.pt')]
+
+    if not lora_files or not checkpoint_files:
+        console.print(
+            "[bold red]Error: No LoRA or checkpoint files found in the specified folders.[/bold red]\n"
+            "Please ensure that .safetensors files are present in both 05a-lora_merging and 05b-checkpoint/input before proceeding."
+        )
+        return None
+
+    # Display available models
+    lora_details = []
+    with tqdm(total=len(lora_files), desc="Loading LoRA models", unit="file", dynamic_ncols=True) as progress_bar:
+        for i, lora_file in enumerate(lora_files, 1):
+            lora_path = os.path.join(lora_folder, lora_file)
+            model = load_lora_model(lora_path)
+            num_layers = len(model.keys())
+            file_size = get_file_size(lora_path)
+            lora_filename = lora_file.replace('.safetensors', '').replace('.pt', '')
+            lora_details.append([i, lora_filename, num_layers, f"{file_size:.2f} MB"])
+            progress_bar.update(1)
+
+    checkpoint_details = []
+    with tqdm(total=len(checkpoint_files), desc="Loading Checkpoints", unit="file", dynamic_ncols=True) as progress_bar:
+        for i, checkpoint_file in enumerate(checkpoint_files, 1):
+            checkpoint_path = os.path.join(checkpoint_folder, checkpoint_file)
+            model = load_lora_model(checkpoint_path)
+            num_layers = len(model.keys())
+            file_size = get_file_size(checkpoint_path)
+            checkpoint_filename = checkpoint_file.replace('.safetensors', '').replace('.pt', '')
+            checkpoint_details.append([i, checkpoint_filename, num_layers, f"{file_size:.2f} MB"])
+            progress_bar.update(1)
+
+    while True:
+        # Display the table with LoRA details
+        formatted_lora_table = tabulate(
+            lora_details,
+            headers=["Index", "LoRA Model", "Number of Layers", "File Size"],
+            tablefmt="pretty",
+            maxcolwidths=[None, 30, None, None]
+        )
+        console.print(f"\n{formatted_lora_table}")
+
+        # Display the table with checkpoint details
+        formatted_checkpoint_table = tabulate(
+            checkpoint_details,
+            headers=["Index", "Checkpoint Model", "Number of Layers", "File Size"],
+            tablefmt="pretty",
+            maxcolwidths=[None, 30, None, None]
+        )
+        console.print(f"\n{formatted_checkpoint_table}")
+
+        # Prompt for main LoRA source
+        while True:
+            try:
+                lora_index = int(Prompt.ask(f"Select the LoRA model (1-{len(lora_files)})")) - 1
+                if 0 <= lora_index < len(lora_files):
+                    lora_file = lora_files[lora_index]
+                    break
+                else:
+                    console.print(f"[bold red]Please enter a number between 1 and {len(lora_files)}.[/bold red]")
+            except ValueError:
+                console.print("[bold red]Please enter a valid number.[/bold red]")
+
+        # Prompt for checkpoint source
+        while True:
+            try:
+                checkpoint_index = int(Prompt.ask(f"Select the Checkpoint model (1-{len(checkpoint_files)})")) - 1
+                if 0 <= checkpoint_index < len(checkpoint_files):
+                    checkpoint_file = checkpoint_files[checkpoint_index]
+                    break
+                else:
+                    console.print(f"[bold red]Please enter a number between 1 and {len(checkpoint_files)}.[/bold red]")
+            except ValueError:
+                console.print("[bold red]Please enter a valid number.[/bold red]")
+
+        # Prompt for merge strategy
+        console.print(
+            "[bold yellow]Choose the merging strategy:[/bold yellow]\n"
+            "[1] Mix (25%, 50%, 75% versions)\n"
+            "[2] Full Blend (specify weight)"
+        )
+        strategy_choice = Prompt.ask("[bold green]Choose a strategy (1-2)[/bold green]", choices=["1", "2"])
+        if strategy_choice == "1":
+            settings["merge_strategy"] = "Mix"
+            settings["weight_percentages"] = [25, 50, 75]
+            console.print("[bold cyan]Selected Mix strategy (25%, 50%, 75%).[/bold cyan]")
+        else:
+            settings["merge_strategy"] = "Full"
+            merge_weight = float(Prompt.ask("[bold green]Enter the percentage of LoRA to merge into the checkpoint (e.g., 40 for 40%)[/bold green]"))
+            settings["merge_weight"] = merge_weight
+            console.print(f"[bold cyan]Using Full Blend: {merge_weight}% of the LoRA model will be merged into the checkpoint.[/bold cyan]")
+
+        # Confirm the settings before merging
+        console.print(
+            f"\n[bold cyan]You have chosen to merge:[/bold cyan]\n"
+            f"LoRA Model: {lora_file}\n"
+            f"Checkpoint Model: {checkpoint_file}\n"
+            f"Merge Strategy: {settings['merge_strategy']}"
+        )
+        if settings["merge_strategy"] == "Mix":
+            console.print(f"Weight Percentages: 25%, 50%, 75%")
+        else:
+            console.print(f"Weight Percentage: {settings['merge_weight']}%")
+
+        confirm = Prompt.ask(
+            "[bold yellow]Is this satisfactory?[/bold yellow] (no to adjust, yes to continue)"
+        )
+
+        if confirm.lower() in ["yes", "y", ""]:
+            break
+        else:
+            console.print("[bold yellow]Adjusting settings. Please make your selections again.[/bold yellow]")
+
+    settings["lora_model"] = lora_file
+    settings["checkpoint_model"] = checkpoint_file
 
     return settings
 

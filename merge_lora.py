@@ -11,7 +11,7 @@ def start(settings):
     print(f"\n###################################\nMerging LoRA with settings: {settings}")
 
     # Load the LoRA models
-    lora_folder = "05-lora_merging"
+    lora_folder = "05a-lora_merging"
     main_lora_path = os.path.join(lora_folder, settings['main_lora'])
     merge_lora_path = os.path.join(lora_folder, settings['merge_lora'])
 

@@ -1,5 +1,4 @@
 # main.py
-
 import boot
 import input
 import generate_caption
@@ -7,6 +6,7 @@ import generate_image
 import generate_prompt
 import generate_style
 import merge_lora
+import merge_lora_checkpoint  # Add this import
 
 def main():
     # Invoke boot routine
@@ -32,6 +32,8 @@ def dispatch_utility(settings):
         generate_caption.start(settings)
     elif utility == "Merge LoRA":
         merge_lora.start(settings)
+    elif utility == "Merge LoRA Checkpoint":  # Add this new condition
+        merge_lora_checkpoint.start(settings)
     else:
         print(f"Unknown utility: {utility}")
 
