@@ -10,6 +10,7 @@ YouTube on My Merged LoRAs: https://www.youtube.com/watch?v=VUV6bzml2SU
 
 - **Adaptive Merging**: Merge two LoRA models with adaptive merge strategies.
 - **Manual Weight Merging**: Support for traditional weighted merging, allowing users to force specific weights.
+- **NEW! Additive Merging**: Use 100% of one LoRA and add a specific percentage of another, perfect for enhancing similar concepts.
 - **Mix or Weighted Options**: Choose from single weighted, or create mixed versions for 25%, 50%, and 75% weights automatically.
 - **User-Friendly Guidance**: Easy-to-follow prompts guide you through the setup.
 
@@ -27,6 +28,11 @@ In the future, I might need to train an entire checkpoint, but for now, adaptive
 
 ### Manual Weight Merging Also Available
 In adaptive merge, the weight value is used when adaptive merging identifies conflicting layers or important overlaps that need prioritization. Sometimes, you may want to force a weight and ignore adaptive merge recommendations. LoRA will behave differently, so having the traditional weight merge approach is valuable for experimentation.
+
+### 🚨 **NEW! Additive Merging**!  
+The Additive Merge strategy allows you to use 100% of the first LoRA model while adding a specified percentage of the second model. This method effectively strengthens the influence of the main model while incorporating the desired effects of the secondary model, making it ideal for combining similar subjects trained on different datasets. The Additive Merge always retains the full influence of the main LoRA, then adds the second LoRA at the specified percentage level, enabling a unique way of blending without losing the original strengths of the main model. This approach is perfect for situations where two models cover the same subject but differ in stylistic elements, allowing you to enhance a concept without retraining from scratch.
+
+**Special thanks to @Tatzes** for inspiring this feature! 
 
 ## 📋 Prerequisites
 

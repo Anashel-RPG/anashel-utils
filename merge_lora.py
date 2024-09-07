@@ -7,7 +7,6 @@ from tqdm import tqdm
 from safetensors.torch import load_file, save_file
 from input import option_5_merge_lora
 
-
 def start(settings):
     print(f"\n###################################\nMerging LoRA with settings: {settings}")
 
@@ -22,6 +21,9 @@ def start(settings):
     # Choose the merging strategy based on the settings
     if settings['merge_strategy'] == 'Mix':
         merged_models = merge_loras_mix(main_lora_model, merge_lora_model, settings['weight_percentages'], settings['merge_type'])
+    elif settings['merge_strategy'] == 'Additive':
+        merged_model = additive_merge(main_lora_model, merge_lora_model, settings['add_weight'] / 100)
+        merged_models = [(settings['add_weight'] / 100, merged_model)]
     else:  # Weighted
         merge_type = settings.get('merge_type', 'adaptive')
         merged_model = merge_loras_weighted(main_lora_model, merge_lora_model, settings['weight_percentage'] / 100, merge_type)
@@ -63,6 +65,28 @@ def merge_loras_weighted(main_lora_model, merge_lora_model, main_weight, merge_t
                 merged_model[key] = main_lora_model[key]
             else:
                 merged_model[key] = merge_lora_model[key]
+            pbar.update(1)
+
+    return merged_model
+
+
+def additive_merge(main_lora_model, merge_lora_model, add_weight):
+    """Always use 100% of the first model and add the second model at a specified percentage."""
+    merged_model = {}
+    all_keys = set(main_lora_model.keys()).union(set(merge_lora_model.keys()))
+
+    with tqdm(total=len(all_keys), desc="Additive Merging LoRA models", unit="layer") as pbar:
+        for key in all_keys:
+            if key in main_lora_model and key in merge_lora_model:
+                tensor1 = main_lora_model[key]
+                tensor2 = merge_lora_model[key]
+                if tensor1.size() != tensor2.size():
+                    tensor1, tensor2 = pad_tensors(tensor1, tensor2)
+                merged_model[key] = tensor1 + (add_weight * tensor2)
+            elif key in main_lora_model:
+                merged_model[key] = main_lora_model[key]
+            else:
+                merged_model[key] = add_weight * merge_lora_model[key]
             pbar.update(1)
 
     return merged_model

@@ -381,41 +381,53 @@ def option_5_merge_lora():
         console.print(
             "[bold yellow]Choose the merging strategy:[/bold yellow]\n"
             "[1] Adaptive Merge (uses tensor norms and weight)\n"
-            "[2] Manual Merge (uses fixed weights you specify)"
+            "[2] Manual Merge (uses fixed weights you specify)\n"
+            "[3] Additive Merge (uses 100% of the first and adds a percentage of the second)"
         )
-        strategy_choice = Prompt.ask("[bold green]Choose a strategy (1-2)[/bold green]", choices=["1", "2"])
+        strategy_choice = Prompt.ask("[bold green]Choose a strategy (1-3)[/bold green]", choices=["1", "2", "3"])
         if strategy_choice == "1":
             merge_type = "adaptive"
             console.print("[bold cyan]Selected Adaptive Merge strategy.[/bold cyan]")
-        else:
+        elif strategy_choice == "2":
             merge_type = "manual"
             console.print("[bold cyan]Selected Manual Merge strategy.[/bold cyan]")
-
-        # Prompt for merge weight percentage
-        weight_input = Prompt.ask(
-            "Enter the percentage to keep from the main model (0-100)\nYou can also type 'mix' for 25%, 50%, 75% versions"
-        )
-
-        if weight_input.lower() == 'mix':
-            settings["merge_strategy"] = "Mix"
-            settings["weight_percentages"] = [25, 50, 75]
-            settings["merge_type"] = merge_type  # Apply the selected merge strategy to the mix
-            console.print(f"[bold cyan]You've chosen to create three versions with weights: 25%, 50%, and 75% using {merge_type} merge strategy.[/bold cyan]")
         else:
-            try:
-                weight_percentage = float(weight_input)
-                if 0 <= weight_percentage <= 100:
-                    settings["merge_strategy"] = "Weighted"
-                    settings["weight_percentage"] = weight_percentage
-                    settings["merge_type"] = merge_type
-                    alpha = weight_percentage / 100
-                    beta = 1.0 - alpha
-                    console.print(f"[bold cyan]Merge Weight: {alpha * 100}% main, {beta * 100}% merge using {merge_type} merge strategy.[/bold cyan]")
-                else:
-                    raise ValueError
-            except ValueError:
-                console.print("[bold red]Invalid input. Please enter a number between 0 and 100 or 'mix'.[/bold red]")
-                continue
+            merge_type = "additive"
+            console.print("[bold cyan]Selected Additive Merge strategy.[/bold cyan]")
+
+        # Handle Additive Merge specific input
+        if merge_type == "additive":
+            add_weight = float(Prompt.ask("[bold green]Enter the percentage of the second LoRA to add (e.g., 40 for 40%)[/bold green]"))
+            settings["merge_strategy"] = "Additive"
+            settings["add_weight"] = add_weight
+            settings["merge_type"] = merge_type  # Fix: properly set the merge_type key
+            console.print(f"[bold cyan]Using Additive Merge: 100% of {main_lora_file} with {add_weight}% of {merge_lora_file}.[/bold cyan]")
+        else:
+            # Prompt for merge weight percentage
+            weight_input = Prompt.ask(
+                "Enter the percentage to keep from the main model (0-100)\nYou can also type 'mix' for 25%, 50%, 75% versions"
+            )
+
+            if weight_input.lower() == 'mix':
+                settings["merge_strategy"] = "Mix"
+                settings["weight_percentages"] = [25, 50, 75]
+                settings["merge_type"] = merge_type  # Apply the selected merge strategy to the mix
+                console.print(f"[bold cyan]You've chosen to create three versions with weights: 25%, 50%, and 75% using {merge_type} merge strategy.[/bold cyan]")
+            else:
+                try:
+                    weight_percentage = float(weight_input)
+                    if 0 <= weight_percentage <= 100:
+                        settings["merge_strategy"] = "Weighted"
+                        settings["weight_percentage"] = weight_percentage
+                        settings["merge_type"] = merge_type
+                        alpha = weight_percentage / 100
+                        beta = 1.0 - alpha
+                        console.print(f"[bold cyan]Merge Weight: {alpha * 100}% main, {beta * 100}% merge using {merge_type} merge strategy.[/bold cyan]")
+                    else:
+                        raise ValueError
+                except ValueError:
+                    console.print("[bold red]Invalid input. Please enter a number between 0 and 100 or 'mix'.[/bold red]")
+                    continue
 
         # Display settings before confirming
         console.print(
@@ -428,7 +440,10 @@ def option_5_merge_lora():
         if settings["merge_strategy"] == "Mix":
             console.print(f"Weight Percentages: 25%, 50%, 75% using {settings['merge_type']} strategy")
         else:
-            console.print(f"Weight Percentage: {settings['weight_percentage']}% using {settings['merge_type']} strategy")
+            if "weight_percentage" in settings:
+                console.print(f"Weight Percentage: {settings['weight_percentage']}% using {settings['merge_type']} strategy")
+            else:
+                console.print(f"Add Weight Percentage: {settings['add_weight']}% using {settings['merge_type']} strategy")
 
         # Confirm settings before proceeding
         confirm = Prompt.ask(
