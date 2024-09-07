@@ -138,7 +138,7 @@ Your new LoRA will start with `mrg_` to identify this was the result of a merge,
 
 ## 🚀 Future Updates
 
-I plan to upload all the utilities I've coded to assist in my training of RPG v6, including image auto-captioning and style transfer to diversify and enrich datasets. In the meantime, feel free to join my Discord community for updates and discussions: [Join my Discord](https://discord.gg/byecho).
+More LoRA merge options + I plan to upload all the utilities I've coded to assist in my training of RPG v6, including image auto-captioning and style transfer to diversify and enrich datasets. In the meantime, feel free to join my Discord community for updates and discussions: [Join my Discord](https://discord.gg/byecho).
 
 You can also download my LoRA: [RPG v6 for Flux1 on CivitAI](https://civitai.com/models/647159/rpg-v6-flux-1).
 
