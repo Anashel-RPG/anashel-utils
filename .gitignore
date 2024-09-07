@@ -8,11 +8,25 @@ __pycache__/
 
 # Ignore contents of specific data folders but keep the folders themselves
 02-images_generation/output/*
+!02-images_generation/output/.gitkeep
+
 03-style_variation/input/*
+!03-style_variation/input/.gitkeep
+
 03-style_variation/output/*
+!03-style_variation/output/.gitkeep
+
 04-ai_caption/input/*
+!04-ai_caption/input/.gitkeep
+
 04-ai_caption/output/*
-05-lora_merging/*
+!04-ai_caption/output/.gitkeep
+
+05a-lora_merging/*
+!05a-lora_merging/.gitkeep
+
+05b-lora_checkpoint/output/*
+!05b-lora_checkpoint/output/.gitkeep
 
 # Distribution / packaging
 .Python
