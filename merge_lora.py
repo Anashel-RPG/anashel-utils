@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 from safetensors.torch import load_file, save_file
 from input import option_5_merge_lora
+import psutil
 
 def start(settings):
     print(f"\n###################################\nMerging LoRA with settings: {settings}")
@@ -155,3 +156,59 @@ def completed(settings):
             sys.exit(0)
         else:
             print("Invalid choice. Please enter 'yes' or 'no'.")
+
+def god_mode(lora_folder, merge_strategy='adaptive', max_merge_attempts=10):
+    """
+    Merges as many tensors at once as possible within available memory constraints.
+
+    Args:
+    - lora_folder: The folder containing LoRA models to merge.
+    - merge_strategy: The merging strategy to use ('adaptive', 'additive').
+    - max_merge_attempts: Number of times to attempt merging batches.
+
+    Returns:
+    - A final merged model saved to disk.
+    """
+    # Load all LoRA models from the folder
+    lora_files = [f for f in os.listdir(lora_folder) if f.endswith('.safetensors')]
+    lora_models = [load_file(os.path.join(lora_folder, file)) for file in lora_files]
+
+    # Check if there are models to merge
+    if not lora_models:
+        print("No LoRA models found to merge.")
+        return
+
+    # Initialize the merged model with the first LoRA
+    merged_model = lora_models[0]
+    print(f"Starting merge with {len(lora_models)} LoRA models.")
+
+    # Merge models in batches according to available memory
+    while len(lora_models) > 1:
+        available_memory = psutil.virtual_memory().available // (1024 ** 2)  # Get available memory in MB
+        print(f"Available Memory: {available_memory} MB")
+
+        # Determine how many models can be merged in this batch
+        merge_batch_size = min(max_merge_attempts, len(lora_models) - 1)
+
+        # Attempt to merge as many tensors as allowed by the current memory size
+        merged_in_batch = 0
+        for i in range(merge_batch_size):
+            try:
+                next_model = lora_models.pop(1)  # Remove the next model to merge
+                if merge_strategy == 'adaptive':
+                    merged_model = merge_loras_weighted(merged_model, next_model, 0.5, 'adaptive')
+                elif merge_strategy == 'additive':
+                    merged_model = additive_merge(merged_model, next_model, 0.5)
+                merged_in_batch += 1
+            except Exception as e:
+                print(f"Error merging batch: {e}")
+                break
+
+        print(f"Merged {merged_in_batch} models in this batch.")
+        if merged_in_batch == 0:
+            print("Unable to merge further due to memory limitations.")
+            break
+
+    # Save the final merged model
+    save_merged_lora(merged_model, lora_folder, 'final_merged', 'god_mode', 1.0, merge_strategy)
+    print("God mode merging completed and saved the final merged model.")

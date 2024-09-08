@@ -27,15 +27,18 @@ def main_input():
     console.print(
         "\n[bold yellow]Would you like to merge:[/bold yellow]\n"
         "[1] Two LoRA models\n"
-        "[2] A LoRA model into a main checkpoint"
+        "[2] A LoRA model into a main checkpoint\n"
+        "[3] God Mode"
     )
-    choice = Prompt.ask("[bold green]Choose an option (1-2)[/bold green]", choices=["1", "2"])
+    choice = Prompt.ask("[bold green]Choose an option (1-3)[/bold green]")
 
     # Call the respective merge function based on the user's choice
     if choice == "1":
         settings = option_5_merge_lora()  # For merging two LoRA models
-    else:
+    elif choice == "2":
         settings = option_6_merge_lora_checkpoint()  # For merging a LoRA model into a checkpoint
+    else:
+        settings = option_god_mode()  # For going mad shit crazy
 
     # Check if settings are valid before confirming
     if settings:
@@ -594,6 +597,40 @@ def option_6_merge_lora_checkpoint():
 
     settings["lora_model"] = lora_file
     settings["checkpoint_model"] = checkpoint_file
+
+    return settings
+
+def option_god_mode():
+    """Handle input for God Mode merging."""
+    console.print("----\n")  # Visual separator for entering the new section
+    console.print(
+        "[bold green]God Mode merges multiple LoRA models simultaneously as far as memory allows, "
+        "looping until all layers have been merged.[/bold green]\n"
+    )
+
+    # Get the folder containing LoRA models
+    lora_folder = "05a-lora_merging"
+    if not os.path.exists(lora_folder):
+        console.print(
+            "[bold red]Error: No LoRA folder found at 05a-lora_merging.[/bold red]\n"
+            "Please ensure that the folder contains LoRA models before proceeding."
+        )
+        return None
+
+    # Confirm the merging strategy
+    console.print(
+        "[bold yellow]Choose the merging strategy for God Mode:[/bold yellow]\n"
+        "[1] Adaptive Merge (balances tensor weights)\n"
+        "[2] Additive Merge (adds tensor layers)"
+    )
+    strategy_choice = Prompt.ask("[bold green]Choose a strategy (1-2)[/bold green]", choices=["1", "2"])
+    merge_strategy = 'adaptive' if strategy_choice == "1" else 'additive'
+
+    settings = {
+        'utility': 'God Mode',
+        'lora_folder': lora_folder,
+        'merge_strategy': merge_strategy
+    }
 
     return settings
 

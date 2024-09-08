@@ -34,6 +34,8 @@ def dispatch_utility(settings):
         merge_lora.start(settings)
     elif utility == "Merge LoRA Checkpoint":  # Add this new condition
         merge_lora_checkpoint.start(settings)
+    elif utility == "God Mode":
+        merge_lora.god_mode(settings['lora_folder'], settings['merge_strategy'])
     else:
         print(f"Unknown utility: {utility}")
 
