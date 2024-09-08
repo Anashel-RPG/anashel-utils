@@ -1,4 +1,4 @@
-# merge_lora_checkpoint.py
+# merge_lora_checkpoint.py for full merge
 import os
 import sys
 import torch
