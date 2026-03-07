@@ -36,6 +36,8 @@ def dispatch_utility(settings):
         merge_lora_checkpoint.start(settings)
     elif utility == "God Mode":
         merge_lora.god_mode(settings['lora_folder'], settings['merge_strategy'])
+    elif utility == "Matrix Merge":
+        merge_lora.start_matrix_merge(settings)
     else:
         print(f"Unknown utility: {utility}")
 

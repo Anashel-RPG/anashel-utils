@@ -9,6 +9,7 @@ from rich.panel import Panel
 from tqdm import tqdm
 from safetensors.torch import load_file as safe_load
 from tabulate import tabulate
+import numpy as np
 
 # Initialize the Rich console
 console = Console()
@@ -28,17 +29,23 @@ def main_input():
         "\n[bold yellow]Would you like to merge:[/bold yellow]\n"
         "[1] Two LoRA models\n"
         "[2] A LoRA model into a main checkpoint\n"
-        "[3] God Mode"
+        "[3] God Mode\n"
+        "[4] Matrix Merge (Advanced)"  # New option
     )
-    choice = Prompt.ask("[bold green]Choose an option (1-3)[/bold green]")
+    choice = Prompt.ask("[bold green]Choose an option (1-4)[/bold green]")
 
     # Call the respective merge function based on the user's choice
     if choice == "1":
         settings = option_5_merge_lora()  # For merging two LoRA models
     elif choice == "2":
         settings = option_6_merge_lora_checkpoint()  # For merging a LoRA model into a checkpoint
+    elif choice == "3":
+        settings = option_god_mode()
+    elif choice == "4":  # Matrix Merge (Advanced)
+        settings = option_matrix_merge()
     else:
-        settings = option_god_mode()  # For going mad shit crazy
+        console.print("[bold red]Invalid choice.[/bold red]")
+        return None
 
     # Check if settings are valid before confirming
     if settings:
@@ -631,6 +638,151 @@ def option_god_mode():
         'lora_folder': lora_folder,
         'merge_strategy': merge_strategy
     }
+
+    return settings
+
+_weight_hint_shown = False
+_last_output_dir = "./matrix_merge_output"
+
+def option_matrix_merge():
+    """Handle input for Matrix Merge mode with table display and similar UI to option_5_merge_lora"""
+    global _weight_hint_shown
+    global _last_output_dir
+
+    console.print("----\n")  # Visual separator
+    console.print(
+        "[bold green]Matrix Merge Mode[/bold green]\n"
+        "Merge multiple LoRAs with independent weights (e.g., 80% + 80% combinations)\n"
+        "Supports negative values and custom weight lists for each LoRA\n"
+    )
+    settings = {"utility": "Matrix Merge"}
+
+    # Scan the LoRA folder and make an inventory
+    lora_folder = "05a-lora_merging"
+    lora_files = [f for f in os.listdir(lora_folder) if f.endswith(('.safetensors', '.pt'))]
+
+    lora_files.sort()
+
+    if not lora_files:
+        console.print("[bold red]Error: No LoRA files found in 05a-lora_merging.[/bold red]")
+        return None
+
+    # Load LoRA details for the table
+    lora_details = []
+    with tqdm(total=len(lora_files), desc="Loading LoRA models", unit="file", dynamic_ncols=True) as progress_bar:
+        for i, lora_file in enumerate(lora_files, 1):
+            lora_path = os.path.join(lora_folder, lora_file)
+            lora_model = load_lora_model(lora_path)
+            num_layers = len(lora_model.keys())
+            file_size = get_file_size(lora_path)
+            lora_filename = lora_file.replace('.safetensors', '').replace('.pt', '')
+            lora_details.append([i, lora_filename, num_layers, f"{file_size:.2f} MB"])
+            progress_bar.update(1)
+
+    settings["loras"] = []
+    settings["weights"] = []
+
+    while True:
+        # Display the table with LoRA details
+        formatted_table = tabulate(
+            lora_details,
+            headers=["Index", "LoRA Model", "Number of Layers", "File Size"],
+            tablefmt="pretty",
+            maxcolwidths=[None, 30, None, None]
+        )
+        console.print(f"\n{formatted_table}")
+
+        # LoRA selection loop
+        while True:
+            try:
+                lora_choise = Prompt.ask(
+                    f"\n[bold yellow]Select LoRA to add (1-{len(lora_files)}, 0 to finish)[/bold yellow]",
+                    default="0"
+                )
+
+                lora_index = int(lora_choise) - 1
+                
+                if lora_index == -1:
+                    if len(settings["loras"]) < 1:
+                        console.print("[red]Select at least 1 LoRA[/red]")
+                        continue
+                    break
+                    
+                if 0 <= lora_index < len(lora_files):
+                    selected_lora = lora_files[lora_index]
+
+                    if not _weight_hint_shown:
+                        # Weight input with examples
+                        weight_input = Prompt.ask(
+                            f"[bold yellow]Enter weight(s) for {selected_lora.replace('.safetensors', '')}[/bold yellow]\n"
+                            "Examples:\n"
+                            "  Single value: 80\n"
+                            "  Multiple: 25,50,75\n"
+                            "  Range: 25-75 (will ask for step)",
+                            default="100"
+                        )
+                        _weight_hint_shown = True
+                    else:
+                        weight_input = Prompt.ask(
+                            f"[bold yellow]Enter weight(s) for {selected_lora.replace('.safetensors', '')}[/bold yellow]",
+                            default="100"
+                        )
+                    
+                    # Parse weight input
+                    if "," in weight_input:
+                        weights = [int(w.strip()) for w in weight_input.split(",")]
+                    elif "-" in weight_input:
+                        start, end = map(int, weight_input.split("-"))
+                        step = int(Prompt.ask("Enter step size", default="25"))
+                        weights = list(np.arange(start, end+step, step))
+                    else:
+                        weights = [int(weight_input)]
+                    
+                    settings["loras"].append(selected_lora)
+                    settings["weights"].append(weights)
+                    
+                    console.print(
+                        f"[green]Added {selected_lora.replace('.safetensors', '')} "
+                        f"with weights: {', '.join(map(str, weights))}[/green]"
+                    )
+                    
+                    # Show current selection
+                    # console.print("\n[bold cyan]Current selection:[/bold cyan]")
+                    # for lora, weight_list in zip(settings["loras"], settings["weights"]):
+                    #     console.print(f"  {lora.replace('.safetensors', '')}: {', '.join(map(str, weight_list))}")
+                    
+                else:
+                    console.print(f"[red]Please enter a number between 1 and {len(lora_files)}[/red]")
+            except ValueError:
+                console.print("[red]Invalid input. Please enter numbers only.[/red]")
+
+        # Output directory
+        settings["output_dir"] = Prompt.ask(
+            "[bold yellow]Enter output directory[/bold yellow]",
+            default=_last_output_dir
+        )
+        _last_output_dir = settings["output_dir"]  # Remember for next time
+
+        # Confirm settings
+        console.print("\n[bold cyan]Merge Settings:[/bold cyan]")
+        console.print(f"LoRAs: {len(settings['loras'])} selected")
+        for lora, weight_list in zip(settings["loras"], settings["weights"]):
+            console.print(f"  {lora.replace('.safetensors', '')}: {', '.join(map(str, weight_list))}")
+        console.print(f"Output Directory: {settings['output_dir']}")
+
+        confirm = Prompt.ask(
+            "[bold yellow]Confirm these settings?[/bold yellow] (yes/no)",
+            choices=["y", "n", "yes", "no"],
+            default="yes"
+        )
+
+        if confirm.lower() in ["y", "yes"]:
+            break
+        else:
+            # Reset selections if user wants to adjust
+            settings["loras"] = []
+            settings["weights"] = []
+            console.print("[yellow]Resetting selections...[/yellow]")
 
     return settings
 

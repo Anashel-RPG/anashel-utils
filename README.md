@@ -29,8 +29,22 @@ In the future, I might need to train an entire checkpoint, but for now, adaptive
 ### Manual Weight Merging Also Available
 In adaptive merge, the weight value is used when adaptive merging identifies conflicting layers or important overlaps that need prioritization. Sometimes, you may want to force a weight and ignore adaptive merge recommendations. LoRA will behave differently, so having the traditional weight merge approach is valuable for experimentation.
 
-### 🚨 **NEW! Additive Merging**!  
+### 🚨 Additive Merging!  
 The Additive Merge strategy allows you to use 100% of the first LoRA model while adding a specified percentage of the second model. This method effectively strengthens the influence of the main model while incorporating the desired effects of the secondary model, making it ideal for combining similar subjects trained on different datasets. The Additive Merge always retains the full influence of the main LoRA, then adds the second LoRA at the specified percentage level, enabling a unique way of blending without losing the original strengths of the main model. This approach is perfect for situations where two models cover the same subject but differ in stylistic elements, allowing you to enhance a concept without retraining from scratch.
+
+**Special thanks to @Tatzes** for inspiring this feature! 
+
+### 🚀 **NEW! Matrix Merge Mode (Advanced)**!  
+The Matrix Merge mode is a powerful addition for advanced users who need complete control over their LoRA combinations. Unlike the standard merge modes that work with two LoRAs and fixed weight relationships, Matrix Merge allows you to:
+   - Merge 1-6 LoRAs simultaneously – Perfect for finding the optimal blend when merging multiple versions of the same concept 
+
+   - Independent weights per LoRA – Each LoRA gets its own weight value (e.g., 80% of LoRA A + 120% of LoRA B)
+
+   - Weight matrices – Specify multiple weights per LoRA to generate all possible combinations
+
+   - Negative weights – Use negative values to subtract concepts or reduce unwanted influences
+
+   - Single LoRA rescaling – Even merge just one LoRA with a weight different from 1.0 to recalibrate its strength
 
 **Special thanks to @Tatzes** for inspiring this feature! 
 

@@ -5,8 +5,10 @@ import sys
 import torch
 from tqdm import tqdm
 from safetensors.torch import load_file, save_file
-from input import option_5_merge_lora
+from input import option_5_merge_lora, option_matrix_merge
 import psutil
+import itertools
+from rich.prompt import Prompt
 
 def start(settings):
     print(f"\n###################################\nMerging LoRA with settings: {settings}")
@@ -140,12 +142,25 @@ def save_merged_lora(merged_model, lora_folder, main_lora_file, merge_lora_file,
 def completed(settings):
     """Prompt user to decide whether to merge another LoRA or finish."""
     while True:
-        choice = input("Do you want to merge another LoRA? (yes to continue, no to finish): ").strip().lower()
+        choice = ""
+        if settings.get("utility") == "Matrix Merge":
+            choice = Prompt.ask(
+                "Do you want to merge another LoRA?", 
+                choices=["yes", "no"],
+                default="no"
+            ).strip().lower()
+        else:
+            choice = input("Do you want to merge another LoRA? (yes to continue, no to finish): ").strip().lower()
         if choice in ["yes", "y", ""]:
-            new_settings = option_5_merge_lora()
-            if new_settings:
-                start(new_settings)
+            if settings.get("utility") == "Matrix Merge":
+                new_settings = option_matrix_merge()
+                if new_settings:
+                    start_matrix_merge(new_settings)
             else:
+                new_settings = option_5_merge_lora()
+                if new_settings:
+                    start(new_settings)
+            if not new_settings:
                 print("No new settings provided. Exiting merge process.")
                 sys.exit(0)
         elif choice in ["no", "n"]:
@@ -320,3 +335,54 @@ def additive_merge_multiple(tensors):
     except Exception as e:
         print(f"Error in additive_merge_multiple: {e}")
         return torch.zeros_like(tensors[0])
+
+def start_matrix_merge(settings):
+    """Handle the new matrix merge functionality"""
+    lora_folder = "05a-lora_merging"
+    os.makedirs(settings['output_dir'], exist_ok=True)
+    
+    # Load all selected LoRAs
+    lora_models = []
+    for lora_file in settings['loras']:
+        lora_path = os.path.join(lora_folder, lora_file)
+        lora_models.append(load_file(lora_path))
+    
+    # Generate all weight combinations
+    weight_combinations = list(itertools.product(*settings['weights']))
+    
+    print(f"\nGenerating {len(weight_combinations)} merged LoRAs...")
+    
+    for combo in tqdm(weight_combinations, desc="Merging combinations"):
+        merged_model = None
+        name_parts = []
+        
+        for lora_model, lora_file, weight in zip(lora_models, settings['loras'], combo):
+            lora_name = os.path.splitext(lora_file)[0]
+            name_parts.append(f"{lora_name}_{weight}p")
+            
+            # Scale and merge
+            scaled = {k: v * (weight/100) for k,v in lora_model.items()}
+            if merged_model is None:
+                merged_model = scaled
+            else:
+                for k in scaled:
+                    if k in merged_model:
+                        # Pad tensors if sizes differ before adding
+                        if merged_model[k].size() != scaled[k].size():
+                            padded1, padded2 = pad_tensors(merged_model[k], scaled[k])
+                            merged_model[k] = padded1 + padded2
+                        else:
+                            merged_model[k] += scaled[k]
+                    else:
+                        merged_model[k] = scaled[k]
+        
+        # Save result
+        output_name = "mrg_mm_" + "+".join(name_parts) + ".safetensors"
+        output_path = os.path.join(settings['output_dir'], output_name)
+        save_file(merged_model, output_path)
+    
+    print("Merging completed! ✅")
+    print(" ")
+
+    # Call the completed function to decide the next action
+    completed(settings)
